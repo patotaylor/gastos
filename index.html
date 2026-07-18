@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10151B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icono-192.png">
+<link rel="icon" href="icono-192.png">
+<title>Gastos</title>
+<style>
+  :root {
+    --tinta:  #10151B;
+    --panel:  #19212B;
+    --linea:  #2A3542;
+    --texto:  #E8EDF3;
+    --tenue:  #8B99AB;
+    --ambar:  #F0A93B;
+    --verde:  #3FBF7F;
+    --rojo:   #E5484D;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  /* El atributo hidden lo pisa cualquier regla con display. Esto lo blinda. */
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0; background: var(--tinta); color: var(--texto);
+    font-family: var(--sans); font-size: 16px;
+    padding: env(safe-area-inset-top) 0 calc(96px + env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 0 16px; }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; padding: 18px 0 14px; border-bottom: 1px solid var(--linea);
+  }
+  .mes { font-family: var(--mono); font-size: 22px; font-weight: 600; letter-spacing: .04em; }
+  .mes.cargando { color: var(--tenue); }
+  .titulo-mes { display: flex; align-items: center; gap: 9px; }
+  .recargar {
+    background: none; border: 0; color: var(--tenue); cursor: pointer;
+    padding: 5px; display: flex; border-radius: 6px;
+  }
+  .recargar:hover, .recargar:active { color: var(--texto); }
+  .recargar.girando { color: var(--ambar); }
+  .recargar.girando svg { animation: girar .8s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .cuenta {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+    color: var(--tenue); text-align: right; line-height: 1.6; text-transform: uppercase;
+  }
+  .cuenta b { color: var(--texto); font-weight: 600; }
+  .cuenta.alerta, .cuenta.alerta b { color: var(--ambar); }
+  .barra { height: 2px; background: var(--linea); margin-top: 4px; width: 100px; }
+  .barra i { display: block; height: 2px; background: var(--tenue); }
+  .cuenta.alerta .barra i { background: var(--ambar); }
+
+  label, .rotulo {
+    display: block; font-family: var(--mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .14em; color: var(--tenue);
+    margin: 20px 0 7px;
+  }
+  .rotulo-fila { display: flex; align-items: center; justify-content: space-between; }
+
+  input, select, textarea {
+    width: 100%; background: var(--panel); color: var(--texto);
+    border: 1px solid var(--linea); border-radius: 8px;
+    padding: 12px 13px; font-size: 16px; font-family: var(--sans);
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--ambar); outline-offset: 2px;
+  }
+
+  /* ── Monto ── */
+  .monto {
+    display: flex; align-items: center; gap: 10px; background: var(--panel);
+    border: 1px solid var(--linea); border-radius: 10px; padding: 6px 14px;
+  }
+  .monto span { font-family: var(--mono); font-size: 22px; color: var(--tenue); }
+  .monto input {
+    border: 0; background: none; padding: 8px 0;
+    font-family: var(--mono); font-size: 34px; font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  .monto input:focus-visible { outline: none; }
+  .monto:focus-within { border-color: var(--ambar); }
+
+  .moneda { display: flex; gap: 4px; }
+  .moneda button {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    background: none; border: 1px solid var(--linea); color: var(--tenue);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  }
+  .moneda button[aria-pressed="true"] {
+    background: var(--texto); color: var(--tinta); border-color: var(--texto); font-weight: 700;
+  }
+  .equivale {
+    font-family: var(--mono); font-size: 12px; color: var(--verde);
+    margin-top: 8px; font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Fichas ── */
+  .fichas { display: flex; flex-wrap: wrap; gap: 7px; }
+  .ficha {
+    font-family: var(--sans); font-size: 13.5px; background: var(--panel); color: var(--tenue);
+    border: 1px solid var(--linea); border-radius: 999px; padding: 8px 13px; cursor: pointer;
+  }
+  .ficha[aria-pressed="true"] {
+    background: var(--texto); color: var(--tinta); border-color: var(--texto); font-weight: 600;
+  }
+
+  .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── Guardar ── */
+  .pie {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    background: linear-gradient(to top, var(--tinta) 62%, transparent);
+    padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .pie > div { max-width: 460px; margin: 0 auto; }
+  .guardar {
+    width: 100%; border: 0; border-radius: 10px; padding: 16px;
+    background: var(--ambar); color: #1A1204;
+    font-family: var(--sans); font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .guardar:disabled { opacity: .5; }
+
+  /* ── Lista ── */
+  .titulo-lista {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 32px 0 2px; padding-top: 18px; border-top: 1px solid var(--linea);
+  }
+  .titulo-lista h2 {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .14em; color: var(--tenue); font-weight: 400; margin: 0;
+  }
+  .g {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 12px 0; border-bottom: 1px solid var(--linea);
+    background: none; border-left: 0; border-right: 0; border-top: 0;
+    color: var(--texto); text-align: left; cursor: pointer; font-family: var(--sans);
+  }
+  .g .f { font-family: var(--mono); font-size: 10px; color: var(--tenue); letter-spacing: .06em; width: 22px; }
+  .g .d { flex: 1; font-size: 14.5px; }
+  .g .d small { display: block; font-family: var(--mono); font-size: 10px; color: var(--tenue); margin-top: 2px; }
+  .g .m { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .g.off .d, .g.off .m { text-decoration: line-through; color: var(--tenue); }
+  .g.nuevo { animation: entra .6s ease; }
+  @keyframes entra { from { background: rgba(240,169,59,.16); } }
+
+  /* ── Avisos ── */
+  .aviso { border-radius: 8px; padding: 11px 13px; font-size: 13.5px; margin-top: 14px; line-height: 1.45; }
+  .aviso.mal  { background: rgba(229,72,77,.12);  border: 1px solid rgba(229,72,77,.4);  color: #FF9CA0; }
+  .aviso.ojo  { background: rgba(240,169,59,.1);  border: 1px solid rgba(240,169,59,.35); color: var(--ambar); }
+  .aviso.bien { background: rgba(63,191,127,.1);  border: 1px solid rgba(63,191,127,.35); color: var(--verde); }
+  .aviso b { font-family: var(--mono); font-weight: 600; }
+
+  /* ── Paneles ── */
+  .fondo { position: fixed; inset: 0; background: rgba(8,11,15,.72); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .fondo.alto { z-index: 20; }
+  .panel {
+    background: var(--panel); border-top: 2px solid var(--ambar); border-radius: 16px 16px 0 0;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+    width: 100%; max-width: 460px; max-height: 88vh; overflow-y: auto; animation: sube .22s ease-out;
+  }
+  @keyframes sube { from { transform: translateY(100%); } }
+  .panel h2 { margin: 0 0 4px; font-size: 17px; }
+  .panel h2 em { font-style: normal; color: var(--ambar); }
+  .panel p { margin: 0 0 16px; font-size: 13.5px; color: var(--tenue); line-height: 1.5; }
+  .panel label:first-of-type { margin-top: 0; }
+
+  .sugerida {
+    width: 100%; text-align: left; background: rgba(240,169,59,.12); border: 1px solid var(--ambar);
+    border-radius: 10px; padding: 14px; color: var(--texto); font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-bottom: 8px;
+  }
+  .sugerida small {
+    display: block; font-family: var(--mono); font-size: 10px; font-weight: 400;
+    letter-spacing: .1em; color: var(--ambar); margin-top: 3px; text-transform: uppercase;
+  }
+  .botones { display: grid; gap: 8px; margin-top: 20px; }
+  .btn { border-radius: 8px; padding: 13px; font-size: 14.5px; cursor: pointer; font-family: var(--sans); border: 1px solid var(--linea); }
+  .btn.primario { background: var(--ambar); color: #1A1204; border: 0; font-weight: 700; }
+  .btn.gris { background: none; color: var(--tenue); }
+  .btn.peligro { background: none; color: var(--rojo); border-color: rgba(229,72,77,.4); }
+  .btn.verde { background: none; color: var(--verde); border-color: rgba(63,191,127,.4); }
+
+  .link {
+    background: none; border: 0; color: var(--tenue); cursor: pointer; font-family: var(--mono);
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 0; text-decoration: underline;
+  }
+  .config { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--linea); display: flex; justify-content: space-between; }
+
+  .hallazgo { border-left: 2px solid var(--ambar); padding: 8px 0 8px 11px; margin-bottom: 12px; font-size: 13.5px; line-height: 1.45; }
+  .hallazgo b { font-family: var(--mono); font-size: 11px; color: var(--ambar); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- ══ Configuración ══ -->
+<div class="wrap" id="vistaConfig" hidden>
+  <header><div class="mes">Configurar</div></header>
+  <p style="color:var(--tenue);font-size:14px;line-height:1.5">
+    Queda guardado en este teléfono. No viaja a ningún lado.
+  </p>
+  <label for="cfgUrl">URL del script (/exec)</label>
+  <input id="cfgUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+  <label for="cfgToken">Token</label>
+  <input id="cfgToken" type="text" autocomplete="off">
+  <div id="cfgError"></div>
+  <div class="pie"><div><button class="guardar" id="cfgGuardar">Conectar</button></div></div>
+</div>
+
+<!-- ══ App ══ -->
+<div class="wrap" id="vistaApp" hidden>
+  <header>
+    <div class="titulo-mes">
+      <span class="mes cargando" id="mes">···</span>
+      <button class="recargar" id="recargar" aria-label="Actualizar desde la planilla" title="Actualizar">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/>
+        </svg>
+      </button>
+    </div>
+    <div class="cuenta" id="cuenta" hidden>
+      <span>Descripciones <b id="cuUsadas">–</b>/32</span>
+      <div class="barra"><i id="cuBarra"></i></div>
+    </div>
+  </header>
+
+  <div id="avisos"></div>
+
+  <label for="desc">Descripción</label>
+  <input id="desc" type="text" list="descs" autocomplete="off" autocapitalize="sentences" enterkeyhint="next">
+  <datalist id="descs"></datalist>
+
+  <div class="rotulo rotulo-fila">
+    <span id="rotMonto">Monto pesos</span>
+    <span class="moneda">
+      <button type="button" id="mArs" aria-pressed="true">$</button>
+      <button type="button" id="mUsd" aria-pressed="false">USD</button>
+    </span>
+  </div>
+  <div class="monto">
+    <span id="simbolo">$</span>
+    <input id="monto" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+  </div>
+
+  <div id="bloqueUSD" hidden>
+    <label for="cambio">Cotización</label>
+    <input id="cambio" type="text" inputmode="decimal" autocomplete="off">
+    <div class="equivale" id="equivale"></div>
+  </div>
+
+  <div class="rotulo">Medio de pago</div>
+  <div class="fichas" id="medios"></div>
+
+  <div class="fila2">
+    <div>
+      <label for="fecha">Fecha</label>
+      <input id="fecha" type="date">
+    </div>
+    <div>
+      <label for="notas">Notas</label>
+      <input id="notas" type="text" placeholder="Cuota 1 de 6" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="titulo-lista">
+    <h2 id="tituloLista">Gastos del mes</h2>
+    <button class="link" id="btnAuditar">Revisar</button>
+  </div>
+  <div id="lista"></div>
+
+  <div class="config">
+    <button class="link" id="reconfigurar">Cambiar URL o token</button>
+    <button class="link" id="verVersion">v?</button>
+  </div>
+
+  <div class="pie"><div><button class="guardar" id="guardar">Guardar gasto</button></div></div>
+</div>
+
+<!-- ══ Edición ══ -->
+<div class="fondo" id="fondoEd" hidden>
+  <div class="panel" role="dialog" aria-modal="true">
+    <h2>Fila <em id="edFila"></em></h2>
+    <p id="edSub"></p>
+
+    <label for="edDesc">Descripción</label>
+    <input id="edDesc" type="text" list="descs" autocomplete="off">
+
+    <div class="rotulo rotulo-fila">
+      <span id="edRotMonto">Monto pesos</span>
+      <span class="moneda">
+        <button type="button" id="edArs" aria-pressed="true">$</button>
+        <button type="button" id="edUsd" aria-pressed="false">USD</button>
+      </span>
+    </div>
+    <input id="edMonto" type="text" inputmode="decimal" autocomplete="off">
+
+    <div id="edBloqueUSD" hidden>
+      <label for="edCambio">Cotización</label>
+      <input id="edCambio" type="text" inputmode="decimal" autocomplete="off">
+      <div class="equivale" id="edEquivale"></div>
+    </div>
+
+    <label for="edMedio">Medio de pago</label>
+    <select id="edMedio"></select>
+
+    <div class="fila2">
+      <div>
+        <label for="edFecha">Fecha</label>
+        <input id="edFecha" type="date">
+      </div>
+      <div>
+        <label for="edNotas">Notas</label>
+        <input id="edNotas" type="text" autocomplete="off">
+      </div>
+    </div>
+
+    <div id="edError"></div>
+
+    <div class="botones">
+      <button class="btn primario" id="edGuardar">Guardar cambios</button>
+      <button class="btn peligro" id="edQuitar">Quitar del total</button>
+      <button class="btn gris" id="edCerrar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Categoría (paso 3) ══ -->
+<div class="fondo alto" id="fondoCat" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="catTitulo">
+    <h2 id="catTitulo"><span id="catPre">Primera vez que cargás </span><em id="catDesc"></em></h2>
+    <p id="catTexto"></p>
+    <div id="catSugerida"></div>
+    <div class="fichas" id="cats"></div>
+    <div class="botones"><button class="btn gris" id="catCancelar">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- ══ Auditoría ══ -->
+<div class="fondo alto" id="fondoAud" hidden>
+  <div class="panel" role="dialog" aria-modal="true">
+    <h2>Revisión de <em id="audMes"></em></h2>
+    <p>Compara cada descripción con la categoría que le diste en los otros meses. Marca, no corrige.</p>
+    <div id="audCuerpo"></div>
+    <div class="botones"><button class="btn gris" id="audCerrar">Cerrar</button></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var CFG = 'gastos.cfg';
+  var cfg = null, datos = null, medioElegido = '', usd = false, edUsd = false;
+  var enviando = false, editando = null, pendiente = null, ultimaCarga = 0;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var plata = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function num(v) { return String(v || '').trim().replace(/\./g, '').replace(',', '.'); }
+  function aviso(donde, tipo, html) { donde.innerHTML = '<div class="aviso ' + tipo + '">' + html + '</div>'; }
+  function limpiar() { $('avisos').innerHTML = ''; }
+
+  // ── Configuración ──
+
+  function leerCfg() { try { return JSON.parse(localStorage.getItem(CFG)); } catch (e) { return null; } }
+
+  function mostrarConfig() {
+    $('vistaApp').hidden = true; $('vistaConfig').hidden = false;
+    if (cfg) { $('cfgUrl').value = cfg.url; $('cfgToken').value = cfg.token; }
+  }
+
+  $('cfgGuardar').addEventListener('click', function () {
+    var url = $('cfgUrl').value.trim(), token = $('cfgToken').value.trim();
+    if (!/^https:\/\/script\.google\.com\/.*\/exec$/.test(url)) {
+      return aviso($('cfgError'), 'mal', 'La URL tiene que terminar en <b>/exec</b>. La de /dev no sirve.');
+    }
+    if (!token) return aviso($('cfgError'), 'mal', 'Falta el token.');
+    cfg = { url: url, token: token };
+    localStorage.setItem(CFG, JSON.stringify(cfg));
+    $('cfgError').innerHTML = '';
+    $('vistaConfig').hidden = true; $('vistaApp').hidden = false;
+    cargar();
+  });
+
+  $('reconfigurar').addEventListener('click', mostrarConfig);
+  $('verVersion').addEventListener('click', function () {
+    alert(datos ? datos.version : 'Sin conexión todavía');
+  });
+
+  // ── Red ──
+
+  function traer(extra) {
+    var q = cfg.url + '?token=' + encodeURIComponent(cfg.token) + (extra || '');
+    return fetch(q).then(function (r) { return r.json(); });
+  }
+
+  function mandar(payload) {
+    payload.token = cfg.token;
+    return fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json(); });
+  }
+
+  // ── Cargar el mes ──
+
+  function cargar(marcar) {
+    var f = $('fecha').value;
+    $('mes').textContent = '···'; $('mes').classList.add('cargando');
+    $('recargar').classList.add('girando');
+
+    return traer(f ? '&fecha=' + f : '')
+      .then(function (r) {
+        if (!r.ok) { $('mes').textContent = '—'; return aviso($('avisos'), 'mal', esc(r.error)); }
+        datos = r;
+        if (!$('fecha').value) $('fecha').value = r.hoy;
+        pintar(marcar);
+      })
+      .catch(function (e) {
+        $('mes').textContent = '—';
+        aviso($('avisos'), 'mal', 'No se pudo conectar con el script.<br>' + esc(e.message));
+      })
+      .then(function () {
+        $('recargar').classList.remove('girando');
+        ultimaCarga = Date.now();
+      });
+  }
+
+  $('recargar').addEventListener('click', function () { limpiar(); cargar(); });
+
+  // Al volver a la app (o a la pestaña) después de un rato, refrescar sola: el
+  // caso típico es haber tocado la planilla en Sheets y volver acá.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState !== 'visible') return;
+    if (!cfg || !datos || enviando) return;
+    if (Date.now() - ultimaCarga < 15000) return;
+    cargar();
+  });
+
+  function pintar(marcar) {
+    $('mes').textContent = datos.mes; $('mes').classList.remove('cargando');
+    $('verVersion').textContent = (datos.version || '').split(' ')[0];
+
+    var c = $('cuenta');
+    c.hidden = false;
+    $('cuUsadas').textContent = datos.indice.usados;
+    $('cuBarra').style.width = Math.round(datos.indice.usados / datos.indice.total * 100) + '%';
+    c.classList.toggle('alerta', datos.indice.libres <= 4 || datos.indice.roto);
+
+    if (datos.indice.roto) {
+      aviso($('avisos'), 'mal', '<b>AF16</b> de ' + datos.mes + ' está en #REF!: la fórmula ' +
+        '<b>=UNIQUE</b> no se puede expandir porque hay algo escrito en su camino. El mes está ' +
+        'sumando cero. Hay que destrabarla en la planilla antes de cargar.');
+      $('guardar').disabled = true;
+      return;
+    }
+    $('guardar').disabled = false;
+
+    if (datos.indice.lleno) {
+      aviso($('avisos'), 'ojo', datos.mes + ' llegó a <b>32/32</b> descripciones. Podés cargar ' +
+        'gastos con descripciones que ya existan; una nueva no entra hasta liberar una.');
+    } else if (datos.indice.libres <= 4) {
+      aviso($('avisos'), 'ojo', 'Quedan <b>' + datos.indice.libres + '</b> descripciones nuevas antes del tope de 32.');
+    }
+
+    $('descs').innerHTML = datos.indice.items.map(function (i) {
+      return '<option value="' + esc(i.desc) + '">' + esc(i.categoria) + '</option>';
+    }).join('');
+
+    if (!medioElegido || datos.medios.indexOf(medioElegido) === -1) medioElegido = datos.medios[0];
+    $('medios').innerHTML = datos.medios.map(function (m) {
+      return '<button type="button" class="ficha" aria-pressed="' + (m === medioElegido) +
+             '" data-m="' + esc(m) + '">' + esc(m) + '</button>';
+    }).join('');
+    $('edMedio').innerHTML = datos.medios.map(function (m) {
+      return '<option value="' + esc(m) + '">' + esc(m) + '</option>';
+    }).join('');
+
+    if (usd && !$('cambio').value && datos.cambio) $('cambio').value = datos.cambio;
+
+    pintarLista(marcar);
+  }
+
+  function pintarLista(marcar) {
+    var g = datos.gastos.slice().reverse();
+    $('tituloLista').textContent = 'Gastos de ' + datos.mes + ' (' + datos.gastos.length + ')';
+
+    if (!g.length) {
+      $('lista').innerHTML = '<div class="g" style="cursor:default"><span class="d" style="color:var(--tenue)">' +
+        'Todavía no hay gastos en ' + esc(datos.mes) + '. Este es el primero.</span></div>';
+      return;
+    }
+
+    $('lista').innerHTML = g.map(function (x) {
+      var extra = [x.fecha ? x.fecha.slice(8) + '/' + x.fecha.slice(5, 7) : 'sin fecha', x.medio];
+      if (x.notas) extra.push(x.notas);
+      if (x.montoUSD) extra.push('US$ ' + plata.format(x.montoUSD));
+      return '<button class="g' + (x.check ? '' : ' off') + (x.fila === marcar ? ' nuevo' : '') +
+             '" data-fila="' + x.fila + '">' +
+               '<span class="f">' + x.fila + '</span>' +
+               '<span class="d">' + esc(x.desc) + '<small>' + esc(extra.join(' · ')) + '</small></span>' +
+               '<span class="m">' + (typeof x.monto === 'number' ? plata.format(x.monto) : '—') + '</span>' +
+             '</button>';
+    }).join('');
+  }
+
+  // ── Alta ──
+
+  $('medios').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.ficha');
+    if (!b) return;
+    medioElegido = b.dataset.m;
+    [].forEach.call(this.querySelectorAll('.ficha'), function (x) { x.setAttribute('aria-pressed', x === b); });
+  });
+
+  $('fecha').addEventListener('change', function () { cargar(); });
+
+  function modoMoneda(esUSD) {
+    usd = esUSD;
+    $('mArs').setAttribute('aria-pressed', !esUSD);
+    $('mUsd').setAttribute('aria-pressed', esUSD);
+    $('simbolo').textContent = esUSD ? 'US$' : '$';
+    $('rotMonto').textContent = esUSD ? 'Monto dólares' : 'Monto pesos';
+    $('bloqueUSD').hidden = !esUSD;
+    if (esUSD && !$('cambio').value && datos && datos.cambio) $('cambio').value = datos.cambio;
+    equivalencia();
+  }
+  $('mArs').addEventListener('click', function () { modoMoneda(false); });
+  $('mUsd').addEventListener('click', function () { modoMoneda(true); });
+
+  function equivalencia() {
+    if (!usd) return ($('equivale').textContent = '');
+    var u = Number(num($('monto').value)), c = Number(num($('cambio').value));
+    $('equivale').textContent = (u > 0 && c > 0) ? '= $ ' + plata.format(u * c) + '  →  BK = =BJ*BL' : '';
+  }
+  $('monto').addEventListener('input', equivalencia);
+  $('cambio').addEventListener('input', equivalencia);
+
+  $('guardar').addEventListener('click', function () {
+    var p = { accion: 'alta', fecha: $('fecha').value, desc: $('desc').value.trim(),
+              medio: medioElegido, notas: $('notas').value.trim() };
+    if (usd) { p.montoUSD = num($('monto').value); p.cambio = num($('cambio').value); }
+    else { p.monto = num($('monto').value); }
+
+    if (!p.desc) return aviso($('avisos'), 'mal', 'Falta la descripción.');
+    if (!(usd ? p.montoUSD : p.monto)) return aviso($('avisos'), 'mal', 'Falta el monto.');
+
+    limpiar();
+    procesar(p, $('guardar'), 'Guardando…', function (r) {
+      aviso($('avisos'), 'bien', 'Guardado en <b>' + esc(r.mes) + '</b>, fila <b>' + r.fila + '</b>.' +
+        (r.realineadas ? ' Se realinearon ' + r.realineadas + ' categorías.' : ''));
+      $('desc').value = ''; $('monto').value = ''; $('notas').value = '';
+      equivalencia();
+      var av = $('avisos').innerHTML;
+      cargar(r.fila).then(function () { $('avisos').innerHTML = av; });
+    });
+  });
+
+  // ── Motor común: alta y edición pasan por acá ──
+
+  function procesar(payload, boton, texto, alSalirBien) {
+    if (enviando) return;
+    enviando = true;
+    var original = boton.textContent;
+    boton.disabled = true; boton.textContent = texto;
+
+    mandar(payload)
+      .then(function (r) {
+        if (r.requiereCategoria) { pendiente = { payload: payload, boton: boton, texto: texto, ok: alSalirBien }; return pedirCategoria(r); }
+        if (!r.ok) { return aviso(boton === $('guardar') ? $('avisos') : $('edError'), 'mal', esc(r.error)); }
+        cerrarPaneles();
+        alSalirBien(r);
+      })
+      .catch(function (e) {
+        aviso(boton === $('guardar') ? $('avisos') : $('edError'), 'mal', 'No se pudo guardar.<br>' + esc(e.message));
+      })
+      .then(function () { enviando = false; boton.disabled = false; boton.textContent = original; });
+  }
+
+  // ── Edición ──
+
+  $('lista').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.g[data-fila]');
+    if (b) abrirEdicion(Number(b.dataset.fila));
+  });
+
+  function abrirEdicion(fila) {
+    var g = null;
+    datos.gastos.forEach(function (x) { if (x.fila === fila) g = x; });
+    if (!g) return;
+    editando = g;
+
+    $('edFila').textContent = datos.mes + ' · ' + fila;
+    $('edSub').textContent = g.check ? 'Suma en el total del mes.' : 'Está fuera del total (check destildado).';
+    $('edDesc').value = g.desc;
+    $('edFecha').value = g.fecha || datos.hoy;
+    $('edNotas').value = g.notas || '';
+    $('edMedio').value = g.medio;
+    $('edError').innerHTML = '';
+
+    edModo(!!g.montoUSD);
+    $('edMonto').value = g.montoUSD ? g.montoUSD : (typeof g.monto === 'number' ? g.monto : '');
+    $('edCambio').value = g.cambio || (datos.cambio || '');
+    edEquivalencia();
+
+    $('edQuitar').textContent = g.check ? 'Quitar del total' : 'Volver a sumar';
+    $('edQuitar').className = 'btn ' + (g.check ? 'peligro' : 'verde');
+    $('fondoEd').hidden = false;
+  }
+
+  function edModo(esUSD) {
+    edUsd = esUSD;
+    $('edArs').setAttribute('aria-pressed', !esUSD);
+    $('edUsd').setAttribute('aria-pressed', esUSD);
+    $('edRotMonto').textContent = esUSD ? 'Monto dólares' : 'Monto pesos';
+    $('edBloqueUSD').hidden = !esUSD;
+    edEquivalencia();
+  }
+  $('edArs').addEventListener('click', function () { edModo(false); });
+  $('edUsd').addEventListener('click', function () { edModo(true); });
+
+  function edEquivalencia() {
+    if (!edUsd) return ($('edEquivale').textContent = '');
+    var u = Number(num($('edMonto').value)), c = Number(num($('edCambio').value));
+    $('edEquivale').textContent = (u > 0 && c > 0) ? '= $ ' + plata.format(u * c) : '';
+  }
+  $('edMonto').addEventListener('input', edEquivalencia);
+  $('edCambio').addEventListener('input', edEquivalencia);
+
+  $('edGuardar').addEventListener('click', function () {
+    var p = { accion: 'editar', mes: datos.mes, fila: editando.fila, fecha: $('edFecha').value,
+              desc: $('edDesc').value.trim(), medio: $('edMedio').value, notas: $('edNotas').value.trim() };
+    if (edUsd) { p.montoUSD = num($('edMonto').value); p.cambio = num($('edCambio').value); }
+    else { p.monto = num($('edMonto').value); }
+
+    if (!p.desc) return aviso($('edError'), 'mal', 'Falta la descripción.');
+
+    procesar(p, $('edGuardar'), 'Guardando…', function (r) {
+      aviso($('avisos'), 'bien', 'Fila <b>' + r.fila + '</b> actualizada.' +
+        (r.realineadas ? ' Se realinearon <b>' + r.realineadas + '</b> categorías en AI.' : ''));
+      var av = $('avisos').innerHTML;
+      cargar(r.fila).then(function () { $('avisos').innerHTML = av; });
+    });
+  });
+
+  $('edQuitar').addEventListener('click', function () {
+    var nuevo = !editando.check;
+    procesar({ accion: 'check', mes: datos.mes, fila: editando.fila, check: nuevo },
+      $('edQuitar'), '…', function (r) {
+        aviso($('avisos'), 'bien', 'Fila <b>' + r.fila + '</b> ' +
+          (nuevo ? 'vuelve a sumar en el total.' : 'quedó fuera del total. La descripción sigue ahí: por eso no se desalinea nada.'));
+        var av = $('avisos').innerHTML;
+        cargar(r.fila).then(function () { $('avisos').innerHTML = av; });
+      });
+  });
+
+  $('edCerrar').addEventListener('click', cerrarPaneles);
+
+  // ── Paso 3: la categoría ──
+
+  function pedirCategoria(r) {
+    $('catDesc').textContent = r.desc;
+    $('catPre').textContent = (r.nueva === false) ? 'Falta la categoría de ' : 'Primera vez que cargás ';
+    $('catTexto').textContent = r.sugerencia
+      ? 'Ya la usaste antes. Confirmá o elegí otra.'
+      : 'Elegí en qué categoría suma.';
+    $('catSugerida').innerHTML = '';
+
+    if (r.sugerencia) {
+      var b = document.createElement('button');
+      b.className = 'sugerida';
+      b.innerHTML = esc(r.sugerencia.categoria) + '<small>Así estaba en ' + esc(r.sugerencia.mes) + '</small>';
+      b.addEventListener('click', function () { conCategoria(r.sugerencia.categoria); });
+      $('catSugerida').appendChild(b);
+    }
+
+    $('cats').innerHTML = datos.categorias.map(function (c) {
+      return '<button type="button" class="ficha" data-c="' + esc(c) + '">' + esc(c) + '</button>';
+    }).join('');
+    $('fondoCat').hidden = false;
+  }
+
+  $('cats').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.ficha');
+    if (b) conCategoria(b.dataset.c);
+  });
+
+  function conCategoria(cat) {
+    if (!pendiente) return;
+    var p = pendiente;
+    pendiente = null;
+    $('fondoCat').hidden = true;
+    p.payload.categoria = cat;
+    procesar(p.payload, p.boton, p.texto, p.ok);
+  }
+
+  $('catCancelar').addEventListener('click', function () { pendiente = null; $('fondoCat').hidden = true; });
+
+  function cerrarPaneles() { $('fondoCat').hidden = true; $('fondoEd').hidden = true; }
+
+  // ── Auditoría ──
+
+  $('btnAuditar').addEventListener('click', function () {
+    var b = this; b.textContent = '···';
+    traer('&accion=auditar&mes=' + encodeURIComponent(datos.mes))
+      .then(function (r) {
+        b.textContent = 'Revisar';
+        if (!r.ok) return aviso($('avisos'), 'mal', esc(r.error));
+        $('audMes').textContent = r.mes;
+        $('audCuerpo').innerHTML = r.hallazgos.length
+          ? r.hallazgos.map(function (h) {
+              return '<div class="hallazgo"><b>AI' + h.fila + ' · ' + esc(h.tipo) + '</b><br>' + esc(h.detalle) + '</div>';
+            }).join('')
+          : '<div class="aviso bien">Sin hallazgos. Cada descripción tiene la misma categoría que en el resto del año.</div>';
+        $('fondoAud').hidden = false;
+      })
+      .catch(function (e) { b.textContent = 'Revisar'; aviso($('avisos'), 'mal', esc(e.message)); });
+  });
+
+  $('audCerrar').addEventListener('click', function () { $('fondoAud').hidden = true; });
+
+  // ── Arranque ──
+
+  cfg = leerCfg();
+  if (!cfg) mostrarConfig();
+  else { $('vistaApp').hidden = false; cargar(); }
+})();
+</script>
+</body>
+</html>
