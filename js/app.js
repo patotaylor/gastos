@@ -9,7 +9,7 @@ import {
 } from './ui.js';
 
 // Versión del proyecto entero: esta y la del script tienen que coincidir.
-const APP = '0.5';
+const APP = '0.6';
 const AUTOR = 'Patricio Taylor';
 
 // Estado de la app. Lo que antes eran variables sueltas "en el aire".
@@ -248,13 +248,37 @@ $('edQuitar').addEventListener('click', function () {
     });
 });
 
+$('edBorrar').addEventListener('click', function () {
+  $('borrarDesc').textContent = editando.desc;
+  $('borrarSub').textContent = 'Fila ' + editando.fila + ' de ' + datos.mes +
+    '. Se va de la planilla y no se puede deshacer.';
+  $('fondoBorrar').hidden = false;
+});
+
+$('borrarCancelar').addEventListener('click', function () { $('fondoBorrar').hidden = true; });
+
+$('borrarConfirmar').addEventListener('click', function () {
+  $('fondoBorrar').hidden = true;
+  var g = editando;
+  procesar({ accion: 'borrar', mes: datos.mes, fila: g.fila },
+    $('borrarConfirmar'), 'Borrando…', function (r) {
+      aviso($('avisos'), 'bien', 'Fila <b>' + r.fila + '</b> borrada.' +
+        (r.realineadas ? ' Se realinearon <b>' + r.realineadas + '</b> categorías en AI.' : ''));
+      var av = $('avisos').innerHTML;
+      cargar().then(function () { $('avisos').innerHTML = av; });
+    });
+});
+
 $('edCerrar').addEventListener('click', cerrarPaneles);
 
 // ── Paso 3: la categoría ──
 
 $('cats').addEventListener('click', function (ev) {
   var b = ev.target.closest('.ficha');
-  if (b) conCategoria(b.dataset.c);
+  if (b) {
+    if (navigator.vibrate) navigator.vibrate(10);
+    conCategoria(b.dataset.c);
+  }
 });
 
 function conCategoria(cat) {
@@ -268,7 +292,7 @@ function conCategoria(cat) {
 
 $('catCancelar').addEventListener('click', function () { pendiente = null; $('fondoCat').hidden = true; });
 
-function cerrarPaneles() { $('fondoCat').hidden = true; $('fondoEd').hidden = true; }
+function cerrarPaneles() { $('fondoCat').hidden = true; $('fondoEd').hidden = true; $('fondoBorrar').hidden = true; }
 
 // ── Auditoría ──
 

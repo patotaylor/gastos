@@ -1,5 +1,5 @@
 /**
- * Gastos Variables — backend (Apps Script standalone) · versión 0.5
+ * Gastos Variables — backend (Apps Script standalone) · versión 0.6
  * © 2026 Patricio Taylor. Todos los derechos reservados.
  *
  * MODELO DE LA HOJA (verificado en la planilla, no suponer):
@@ -26,7 +26,7 @@ const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'O
 // Versión del proyecto entero: tiene que coincidir con la del index.html.
 // Si no coincide, el /exec quedó sirviendo código viejo y la app te avisa.
 // Subirla en cada cambio.
-const VERSION = '0.4';
+const VERSION = '0.6';
 
 const CARGA_FILA_INI = 16;
 const CARGA_FILA_FIN = 139;   // BG16:BO139
@@ -37,6 +37,7 @@ const COL_BG = 59;
 const COL_BH = 60;
 const COL_BI = 61;   // fórmula =$G$11 — NUNCA se escribe ni se borra
 const COL_BJ = 62;
+const COL_BK = 63;   // monto pesos — precarga =BJ*BL en filas vacías
 
 const AF_FILA_INI = 16;
 const AF_FILA_FIN = 47;
@@ -126,6 +127,7 @@ function doPost(e) {
       if (accion === 'alta')   return json(altaGasto(body));
       if (accion === 'editar') return json(editarGasto(body));
       if (accion === 'check')  return json(marcarCheck(body));
+      if (accion === 'borrar') return json(borrarGasto(body));
       throw new Error('Acción desconocida: "' + accion + '".');
     } finally {
       lock.releaseLock();
@@ -279,6 +281,38 @@ function marcarCheck(body) {
   return { ok: true, mes: hoja.getName(), fila: fila, desc: desc, check: body.check === true };
 }
 
+// ── Borrado real: limpia la fila y deja que AF/AI se reacomoden ──
+function borrarGasto(body) {
+  const ss = abrirLibro();
+  const hoja = hojaPorNombre(ss, body.mes);
+  const fila = filaValida(body.fila);
+
+  const indice = leerIndice(hoja);
+  chequearSano(hoja, indice);
+
+  const desc = String(hoja.getRange(fila, COL_BH).getValue() || '').trim();
+  if (!desc) throw new Error('La fila ' + fila + ' de ' + hoja.getName() + ' ya está vacía.');
+
+  // El mapa se toma ANTES de tocar BH: memoria de qué categoría le toca a cada
+  // descripción, para reaplicarla cuando UNIQUE se reacomode tras el borrado.
+  const mapa = mapaCategorias(indice);
+
+  limpiarFila(hoja, fila);          // borra BG:BH y BJ:BO (BI queda: tiene =$G$11)
+  SpreadsheetApp.flush();           // que UNIQUE recalcule antes de reacomodar
+
+  const realineadas = reacomodarCategorias(hoja, mapa);
+  SpreadsheetApp.flush();
+
+  return {
+    ok: true,
+    mes: hoja.getName(),
+    fila: fila,
+    desc: desc,
+    realineadas: realineadas,
+    indice: resumen(leerIndice(hoja))
+  };
+}
+
 // ═══════════════════════════════════════════════════════════
 //  Escritura
 // ═══════════════════════════════════════════════════════════
@@ -308,7 +342,11 @@ function escribirFila(hoja, fila, desc, d, tz, esAlta) {
 
 function limpiarFila(hoja, fila) {
   hoja.getRange(fila, COL_BG, 1, 2).clearContent();   // BG, BH
-  hoja.getRange(fila, COL_BJ, 1, 6).clearContent();   // BJ..BO — BI queda
+  hoja.getRange(fila, COL_BJ, 1, 6).clearContent();   // BJ..BO — BI queda (tiene =$G$11)
+
+  // Restituir la precarga de fábrica en BK: =BJ*BL, lista para una carga manual
+  // en dólares. Se arma con el número de fila (BK50 → =BJ50*BL50).
+  hoja.getRange(fila, COL_BK).setFormula('=BJ' + fila + '*BL' + fila);
   SpreadsheetApp.flush();
 }
 
