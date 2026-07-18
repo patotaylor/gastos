@@ -5,11 +5,11 @@ import { leerConfig, guardarConfig } from './config.js';
 import { traer, mandar } from './api.js';
 import {
   $, plata, esc, num, aviso, limpiarAvisos,
-  pintar, pintarLista, pedirCategoria, pintarAuditoria
+  pintar, pintarLista, pedirCategoria, pintarAuditoria, pintarPresupuesto
 } from './ui.js';
 
 // Versión del proyecto entero: esta y la del script tienen que coincidir.
-const APP = '0.4';
+const APP = '0.5';
 const AUTOR = 'Patricio Taylor';
 
 // Estado de la app. Lo que antes eran variables sueltas "en el aire".
@@ -41,6 +41,22 @@ $('firma').addEventListener('click', function () {
         'Script: ' + (datos ? datos.version : 'sin conectar') + '\n' +
         'Planilla: ' + (datos ? datos.mes : '—'));
 });
+
+// ── Pestañas ──
+
+function irA(pestania) {
+    var enCargar = (pestania === 'cargar');
+    $('panelCargar').hidden = !enCargar;
+    $('panelPresu').hidden = enCargar;
+    $('tabCargar').setAttribute('aria-pressed', enCargar);
+    $('tabPresu').setAttribute('aria-pressed', !enCargar);
+    // El botón "Guardar gasto" del pie solo tiene sentido en Cargar.
+    $('guardar').parentElement.parentElement.hidden = !enCargar;
+    if (!enCargar && datos) pintarPresupuesto(datos);
+  }
+  
+  $('tabCargar').addEventListener('click', function () { irA('cargar'); });
+  $('tabPresu').addEventListener('click', function () { irA('presu'); });
 
 // ── Cargar el mes ──
 

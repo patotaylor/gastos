@@ -136,3 +136,39 @@ export function pintarAuditoria(r) {
     : '<div class="aviso bien">Sin hallazgos. Cada descripción tiene la misma categoría que en el resto del año.</div>';
   $('fondoAud').hidden = false;
 }
+
+// Dibuja el bloque presupuesto vs real en su panel. Solo lectura.
+// Preparada para más de una sección (hoy: Variables; después: Fijos).
+export function pintarPresupuesto(datos) {
+    var p = datos.presupuesto;
+  
+    var filas = p.items.map(function (x) {
+      var pct = x.presupuesto > 0 ? (x.real / x.presupuesto) : 0;
+      var ancho = Math.min(100, Math.round(pct * 100));
+      var estado = pct > 1 ? 'pasado' : (pct >= 0.85 ? 'medio' : '');
+      return '<div class="presu-fila">' +
+               '<div class="top">' +
+                 '<span class="cat">' + esc(x.categoria) + '</span>' +
+                 '<span class="cifras"><b>' + plata.format(x.real) + '</b> / ' +
+                   plata.format(x.presupuesto) + '</span>' +
+               '</div>' +
+               '<div class="presu-barra ' + estado + '"><i style="width:' + ancho + '%"></i></div>' +
+             '</div>';
+    }).join('');
+  
+    var totPct = p.totalPresupuesto > 0 ? (p.totalReal / p.totalPresupuesto) : 0;
+    var totEstado = totPct > 1 ? 'pasado' : (totPct >= 0.85 ? 'medio' : '');
+    var anchoTot = Math.min(100, Math.round(totPct * 100));
+  
+    $('panelPresu').innerHTML =
+      '<div class="presu-seccion">Gastos variables</div>' +
+      filas +
+      '<div class="presu-total">' +
+        '<div class="top">' +
+          '<span class="cat"><b>TOTAL</b></span>' +
+          '<span class="cifras"><b>' + plata.format(p.totalReal) + '</b> / ' +
+            plata.format(p.totalPresupuesto) + '</span>' +
+        '</div>' +
+        '<div class="presu-barra ' + totEstado + '"><i style="width:' + anchoTot + '%"></i></div>' +
+      '</div>';
+  }

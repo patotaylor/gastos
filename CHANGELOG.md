@@ -1,9 +1,9 @@
 # Changelog
 
-## [No publicado] — rama feat/arquitectura
-- Repo dividido en carpetas: `css/`, `js/`, `assets/`, `apps-script/`.
-- JS partido en módulos ES: `config`, `api`, `ui`, `app`.
-- Sin cambios de comportamiento respecto de 0.4: es una reorganización.
+## [0.5] — 2026-07-18
+- Pestaña Presupuesto: comparación presupuesto vs real por categoría, con barras de progreso (solo lectura).
+- Repo reorganizado en carpetas (`css/`, `js/`, `assets/`, `apps-script/`) y JS dividido en módulos ES (`config`, `api`, `ui`, `app`). Sin cambios de comportamiento.
+- Flujo de trabajo con ramas + Pull Request.
 
 ## [0.4] — 2026-07-18
 - Editar y borrar gastos desde la lista.

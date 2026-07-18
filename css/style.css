@@ -194,3 +194,51 @@
   .hallazgo b { font-family: var(--mono); font-size: 11px; color: var(--ambar); }
 
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+
+  /* ── Pestañas ── */
+.tabs {
+    display: flex; gap: 4px; margin: 4px 0 6px;
+    border-bottom: 1px solid var(--linea);
+  }
+  .tab {
+    flex: 1; background: none; border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--tenue); cursor: pointer;
+    font-family: var(--sans); font-size: 14px; font-weight: 600;
+    padding: 11px 8px; margin-bottom: -1px;
+  }
+  .tab[aria-pressed="true"] {
+    color: var(--texto); border-bottom-color: var(--ambar);
+  }
+  /* ── Presupuesto vs real ── */
+.presu-fila {
+    padding: 12px 0; border-bottom: 1px solid var(--linea);
+  }
+  .presu-fila .top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .presu-fila .cat { font-size: 14.5px; }
+  .presu-fila .cifras {
+    font-family: var(--mono); font-size: 12px; color: var(--tenue);
+    font-variant-numeric: tabular-nums;
+  }
+  .presu-fila .cifras b { color: var(--texto); }
+  .presu-barra { height: 6px; background: var(--panel); border-radius: 3px; overflow: hidden; }
+  .presu-barra i { display: block; height: 6px; border-radius: 3px; background: var(--verde); }
+  .presu-barra.medio i { background: var(--ambar); }
+  .presu-barra.pasado i { background: var(--rojo); }
+  
+  .presu-total {
+    margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--linea);
+  }
+  .presu-total .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .presu-seccion {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .14em; color: var(--tenue); margin: 20px 0 4px;
+  }
