@@ -1,0 +1,196 @@
+  :root {
+    --tinta:  #10151B;
+    --panel:  #19212B;
+    --linea:  #2A3542;
+    --texto:  #E8EDF3;
+    --tenue:  #8B99AB;
+    --ambar:  #F0A93B;
+    --verde:  #3FBF7F;
+    --rojo:   #E5484D;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  /* El atributo hidden lo pisa cualquier regla con display. Esto lo blinda. */
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0; background: var(--tinta); color: var(--texto);
+    font-family: var(--sans); font-size: 16px;
+    padding: env(safe-area-inset-top) 0 calc(96px + env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 0 16px; }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; padding: 18px 0 14px; border-bottom: 1px solid var(--linea);
+  }
+  .mes { font-family: var(--mono); font-size: 22px; font-weight: 600; letter-spacing: .04em; }
+  .mes.cargando { color: var(--tenue); }
+  .titulo-mes { display: flex; align-items: center; gap: 9px; }
+  .recargar {
+    background: none; border: 0; color: var(--tenue); cursor: pointer;
+    padding: 5px; display: flex; border-radius: 6px;
+  }
+  .recargar:hover, .recargar:active { color: var(--texto); }
+  .recargar.girando { color: var(--ambar); }
+  .recargar.girando svg { animation: girar .8s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .cuenta {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+    color: var(--tenue); text-align: right; line-height: 1.6; text-transform: uppercase;
+  }
+  .cuenta b { color: var(--texto); font-weight: 600; }
+  .cuenta.alerta, .cuenta.alerta b { color: var(--ambar); }
+  .barra { height: 2px; background: var(--linea); margin-top: 4px; width: 100px; }
+  .barra i { display: block; height: 2px; background: var(--tenue); }
+  .cuenta.alerta .barra i { background: var(--ambar); }
+
+  label, .rotulo {
+    display: block; font-family: var(--mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .14em; color: var(--tenue);
+    margin: 20px 0 7px;
+  }
+  .rotulo-fila { display: flex; align-items: center; justify-content: space-between; }
+
+  input, select, textarea {
+    width: 100%; min-width: 0; background: var(--panel); color: var(--texto);
+    border: 1px solid var(--linea); border-radius: 8px;
+    padding: 12px 13px; font-size: 16px; font-family: var(--sans);
+  }
+  /* iOS le da al date un ancho mínimo propio y desborda la grilla. */
+  input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 46px; }
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--ambar); outline-offset: 2px;
+  }
+
+  /* ── Monto ── */
+  .monto {
+    display: flex; align-items: center; gap: 10px; background: var(--panel);
+    border: 1px solid var(--linea); border-radius: 10px; padding: 6px 14px;
+  }
+  .monto span { font-family: var(--mono); font-size: 22px; color: var(--tenue); }
+  .monto input {
+    border: 0; background: none; padding: 8px 0;
+    font-family: var(--mono); font-size: 34px; font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  .monto input:focus-visible { outline: none; }
+  .monto:focus-within { border-color: var(--ambar); }
+
+  .moneda { display: flex; gap: 4px; }
+  .moneda button {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    background: none; border: 1px solid var(--linea); color: var(--tenue);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  }
+  .moneda button[aria-pressed="true"] {
+    background: var(--texto); color: var(--tinta); border-color: var(--texto); font-weight: 700;
+  }
+  .equivale {
+    font-family: var(--mono); font-size: 12px; color: var(--verde);
+    margin-top: 8px; font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Fichas ── */
+  .fichas { display: flex; flex-wrap: wrap; gap: 7px; }
+  .ficha {
+    font-family: var(--sans); font-size: 13.5px; background: var(--panel); color: var(--tenue);
+    border: 1px solid var(--linea); border-radius: 999px; padding: 8px 13px; cursor: pointer;
+  }
+  .ficha[aria-pressed="true"] {
+    background: var(--texto); color: var(--tinta); border-color: var(--texto); font-weight: 600;
+  }
+
+  /* 1fr = minmax(auto,1fr): la columna no baja del ancho mínimo de su contenido.
+     Con minmax(0,1fr) sí, que es lo que necesita el input date en iOS. */
+  .fila2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .fila2 > div { min-width: 0; }
+
+  /* ── Guardar ── */
+  .pie {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    background: linear-gradient(to top, var(--tinta) 62%, transparent);
+    padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .pie > div { max-width: 460px; margin: 0 auto; }
+  .guardar {
+    width: 100%; border: 0; border-radius: 10px; padding: 16px;
+    background: var(--ambar); color: #1A1204;
+    font-family: var(--sans); font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .guardar:disabled { opacity: .5; }
+
+  /* ── Lista ── */
+  .titulo-lista {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 32px 0 2px; padding-top: 18px; border-top: 1px solid var(--linea);
+  }
+  .titulo-lista h2 {
+    font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .14em; color: var(--tenue); font-weight: 400; margin: 0;
+  }
+  .g {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 12px 0; border-bottom: 1px solid var(--linea);
+    background: none; border-left: 0; border-right: 0; border-top: 0;
+    color: var(--texto); text-align: left; cursor: pointer; font-family: var(--sans);
+  }
+  .g .f { font-family: var(--mono); font-size: 10px; color: var(--tenue); letter-spacing: .06em; width: 22px; }
+  .g .d { flex: 1; font-size: 14.5px; }
+  .g .d small { display: block; font-family: var(--mono); font-size: 10px; color: var(--tenue); margin-top: 2px; }
+  .g .m { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .g.off .d, .g.off .m { text-decoration: line-through; color: var(--tenue); }
+  .g.nuevo { animation: entra .6s ease; }
+  @keyframes entra { from { background: rgba(240,169,59,.16); } }
+
+  /* ── Avisos ── */
+  .aviso { border-radius: 8px; padding: 11px 13px; font-size: 13.5px; margin-top: 14px; line-height: 1.45; }
+  .aviso.mal  { background: rgba(229,72,77,.12);  border: 1px solid rgba(229,72,77,.4);  color: #FF9CA0; }
+  .aviso.ojo  { background: rgba(240,169,59,.1);  border: 1px solid rgba(240,169,59,.35); color: var(--ambar); }
+  .aviso.bien { background: rgba(63,191,127,.1);  border: 1px solid rgba(63,191,127,.35); color: var(--verde); }
+  .aviso b { font-family: var(--mono); font-weight: 600; }
+
+  /* ── Paneles ── */
+  .fondo { position: fixed; inset: 0; background: rgba(8,11,15,.72); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .fondo.alto { z-index: 20; }
+  .panel {
+    background: var(--panel); border-top: 2px solid var(--ambar); border-radius: 16px 16px 0 0;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+    width: 100%; max-width: 460px; max-height: 88vh; overflow-y: auto; animation: sube .22s ease-out;
+  }
+  @keyframes sube { from { transform: translateY(100%); } }
+  .panel h2 { margin: 0 0 4px; font-size: 17px; }
+  .panel h2 em { font-style: normal; color: var(--ambar); }
+  .panel p { margin: 0 0 16px; font-size: 13.5px; color: var(--tenue); line-height: 1.5; }
+  .panel label:first-of-type { margin-top: 0; }
+
+  .sugerida {
+    width: 100%; text-align: left; background: rgba(240,169,59,.12); border: 1px solid var(--ambar);
+    border-radius: 10px; padding: 14px; color: var(--texto); font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-bottom: 8px;
+  }
+  .sugerida small {
+    display: block; font-family: var(--mono); font-size: 10px; font-weight: 400;
+    letter-spacing: .1em; color: var(--ambar); margin-top: 3px; text-transform: uppercase;
+  }
+  .botones { display: grid; gap: 8px; margin-top: 20px; }
+  .btn { border-radius: 8px; padding: 13px; font-size: 14.5px; cursor: pointer; font-family: var(--sans); border: 1px solid var(--linea); }
+  .btn.primario { background: var(--ambar); color: #1A1204; border: 0; font-weight: 700; }
+  .btn.gris { background: none; color: var(--tenue); }
+  .btn.peligro { background: none; color: var(--rojo); border-color: rgba(229,72,77,.4); }
+  .btn.verde { background: none; color: var(--verde); border-color: rgba(63,191,127,.4); }
+
+  .link {
+    background: none; border: 0; color: var(--tenue); cursor: pointer; font-family: var(--mono);
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 0; text-decoration: underline;
+  }
+  .config { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--linea); display: flex; justify-content: space-between; }
+
+  .hallazgo { border-left: 2px solid var(--ambar); padding: 8px 0 8px 11px; margin-bottom: 12px; font-size: 13.5px; line-height: 1.45; }
+  .hallazgo b { font-family: var(--mono); font-size: 11px; color: var(--ambar); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
