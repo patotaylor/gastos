@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6] — 2026-07-18
+- Borrado real de gastos: limpia la fila, restituye la precarga =BJ*BL y realinea las categorías de AI solo. Se suma al "Quitar del total".
+- Confirmación de borrado con panel propio (en vez del diálogo del navegador).
+- Feedback táctil en las fichas (achique al tocar + vibración donde el dispositivo la soporta).
+
 ## [0.5] — 2026-07-18
 - Pestaña Presupuesto: comparación presupuesto vs real por categoría, con barras de progreso (solo lectura).
 - Repo reorganizado en carpetas (`css/`, `js/`, `assets/`, `apps-script/`) y JS dividido en módulos ES (`config`, `api`, `ui`, `app`). Sin cambios de comportamiento.

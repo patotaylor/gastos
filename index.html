@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  Gastos Variables — PWA de carga · versión 0.5
+  Gastos Variables — PWA de carga · versión 0.6
   © 2026 Patricio Taylor. Todos los derechos reservados.
   Uso personal. Escribe en la planilla "Presupuesto" vía Apps Script.
 -->
@@ -155,6 +155,7 @@
     <div class="botones">
       <button class="btn primario" id="edGuardar">Guardar cambios</button>
       <button class="btn peligro" id="edQuitar">Quitar del total</button>
+      <button class="btn peligro" id="edBorrar">Borrar de la planilla</button>
       <button class="btn gris" id="edCerrar">Cancelar</button>
     </div>
   </div>
@@ -168,6 +169,17 @@
     <div id="catSugerida"></div>
     <div class="fichas" id="cats"></div>
     <div class="botones"><button class="btn gris" id="catCancelar">Cancelar</button></div>
+  </div>
+</div>
+
+<div class="fondo alto" id="fondoBorrar" hidden>
+  <div class="panel" role="dialog" aria-modal="true">
+    <h2>¿Borrar <em id="borrarDesc"></em>?</h2>
+    <p id="borrarSub"></p>
+    <div class="botones">
+      <button class="btn peligro" id="borrarConfirmar">Sí, borrar de la planilla</button>
+      <button class="btn gris" id="borrarCancelar">Cancelar</button>
+    </div>
   </div>
 </div>
 

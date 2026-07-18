@@ -100,9 +100,14 @@
   .ficha {
     font-family: var(--sans); font-size: 13.5px; background: var(--panel); color: var(--tenue);
     border: 1px solid var(--linea); border-radius: 999px; padding: 8px 13px; cursor: pointer;
+    transition: transform .08s ease, background .12s ease;
   }
   .ficha[aria-pressed="true"] {
     background: var(--texto); color: var(--tinta); border-color: var(--texto); font-weight: 600;
+  }
+  .ficha:active {
+    transform: scale(0.95);
+    background: var(--linea);
   }
 
   /* 1fr = minmax(auto,1fr): la columna no baja del ancho mínimo de su contenido.
