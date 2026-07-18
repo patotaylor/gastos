@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+  Gastos Variables — PWA de carga · versión 0.4
+  © 2026 Patricio Taylor. Todos los derechos reservados.
+  Uso personal. Escribe en la planilla "Presupuesto" vía Apps Script.
+-->
 <html lang="es-AR">
 <head>
 <meta charset="utf-8">
@@ -71,10 +76,12 @@
   .rotulo-fila { display: flex; align-items: center; justify-content: space-between; }
 
   input, select, textarea {
-    width: 100%; background: var(--panel); color: var(--texto);
+    width: 100%; min-width: 0; background: var(--panel); color: var(--texto);
     border: 1px solid var(--linea); border-radius: 8px;
     padding: 12px 13px; font-size: 16px; font-family: var(--sans);
   }
+  /* iOS le da al date un ancho mínimo propio y desborda la grilla. */
+  input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 46px; }
   input:focus-visible, select:focus-visible, button:focus-visible {
     outline: 2px solid var(--ambar); outline-offset: 2px;
   }
@@ -117,7 +124,10 @@
     background: var(--texto); color: var(--tinta); border-color: var(--texto); font-weight: 600;
   }
 
-  .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  /* 1fr = minmax(auto,1fr): la columna no baja del ancho mínimo de su contenido.
+     Con minmax(0,1fr) sí, que es lo que necesita el input date en iOS. */
+  .fila2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .fila2 > div { min-width: 0; }
 
   /* ── Guardar ── */
   .pie {
@@ -285,7 +295,7 @@
 
   <div class="config">
     <button class="link" id="reconfigurar">Cambiar URL o token</button>
-    <button class="link" id="verVersion">v?</button>
+    <button class="link" id="firma">© 2026 Patricio · v0.4</button>
   </div>
 
   <div class="pie"><div><button class="guardar" id="guardar">Guardar gasto</button></div></div>
@@ -365,6 +375,12 @@
   'use strict';
 
   var CFG = 'gastos.cfg';
+
+  // Versión del proyecto entero: esta y la del script tienen que coincidir.
+  // Si no coinciden, el /exec quedó sirviendo código viejo.
+  var APP = '0.4';
+  var AUTOR = 'Patricio Taylor';
+
   var cfg = null, datos = null, medioElegido = '', usd = false, edUsd = false;
   var enviando = false, editando = null, pendiente = null, ultimaCarga = 0;
 
@@ -403,8 +419,11 @@
   });
 
   $('reconfigurar').addEventListener('click', mostrarConfig);
-  $('verVersion').addEventListener('click', function () {
-    alert(datos ? datos.version : 'Sin conexión todavía');
+  $('firma').addEventListener('click', function () {
+    alert('Gastos Variables v' + APP + '\n© 2026 ' + AUTOR +
+          '\nTodos los derechos reservados.\n\n' +
+          'Script: ' + (datos ? datos.version : 'sin conectar') + '\n' +
+          'Planilla: ' + (datos ? datos.mes : '—'));
   });
 
   // ── Red ──
@@ -460,7 +479,12 @@
 
   function pintar(marcar) {
     $('mes').textContent = datos.mes; $('mes').classList.remove('cargando');
-    $('verVersion').textContent = (datos.version || '').split(' ')[0];
+    $('firma').textContent = '© 2026 ' + AUTOR.split(' ')[0] + ' · v' + APP;
+
+    if (datos.version !== APP) {
+      aviso($('avisos'), 'ojo', 'La app está en <b>v' + APP + '</b> y el script responde <b>v' +
+        esc(datos.version) + '</b>. Falta <b>Administrar implementaciones → Nueva versión</b>.');
+    }
 
     var c = $('cuenta');
     c.hidden = false;
