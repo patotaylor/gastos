@@ -1,5 +1,5 @@
 /**
- * Gastos Variables — backend (Apps Script standalone) · versión 0.4
+ * Gastos Variables — backend (Apps Script standalone) · versión 0.5
  * © 2026 Patricio Taylor. Todos los derechos reservados.
  *
  * MODELO DE LA HOJA (verificado en la planilla, no suponer):
@@ -94,7 +94,8 @@ function doGet(e) {
       categorias: leerCategorias(ss),
       medios: leerMedios(hoja),
       indice: leerIndice(hoja),
-      gastos: leerGastos(ss, hoja)
+      gastos: leerGastos(ss, hoja),
+      presupuesto: leerPresupuesto(hoja)
     });
 
   } catch (err) {
@@ -664,6 +665,31 @@ function leerGastos(ss, hoja) {
     });
   });
   return out;
+}
+
+// Lee el bloque Presupuesto vs Real (U15:Z33). Solo lectura.
+// V = categoría · X = presupuesto (a mano) · Z = real (fórmula FILTER).
+
+function leerPresupuesto(hoja) {
+  var vals = hoja.getRange('V16:Z33').getValues();  // 18 filas: 16..33
+  var items = [];
+
+  for (var i = 0; i < 17; i++) {                    // 16..32 = las 17 categorías
+    var cat = String(vals[i][0] || '').trim();      // V
+    if (!cat) continue;
+    items.push({
+      categoria: cat,
+      presupuesto: typeof vals[i][2] === 'number' ? vals[i][2] : 0,  // X
+      real:        typeof vals[i][4] === 'number' ? vals[i][4] : 0    // Z
+    });
+  }
+
+  var totalFila = vals[17];                          // fila 33
+  return {
+    items: items,
+    totalPresupuesto: typeof totalFila[2] === 'number' ? totalFila[2] : 0,
+    totalReal:        typeof totalFila[4] === 'number' ? totalFila[4] : 0
+  };
 }
 
 // ═══════════════════════════════════════════════════════════

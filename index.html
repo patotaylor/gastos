@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  Gastos Variables — PWA de carga · versión 0.4
+  Gastos Variables — PWA de carga · versión 0.5
   © 2026 Patricio Taylor. Todos los derechos reservados.
   Uso personal. Escribe en la planilla "Presupuesto" vía Apps Script.
 -->
@@ -52,49 +52,57 @@
     </div>
   </header>
 
-  <div id="avisos"></div>
+  <nav class="tabs">
+    <button class="tab" id="tabCargar" aria-pressed="true">Cargar</button>
+    <button class="tab" id="tabPresu" aria-pressed="false">Presupuesto</button>
+  </nav>
 
-  <label for="desc">Descripción</label>
-  <input id="desc" type="text" list="descs" autocomplete="off" autocapitalize="sentences" enterkeyhint="next">
-  <datalist id="descs"></datalist>
+  <div id="panelCargar">
+    <div id="avisos"></div>
+    <label for="desc">Descripción</label>
+    <input id="desc" type="text" list="descs" autocomplete="off" autocapitalize="sentences" enterkeyhint="next">
+    <datalist id="descs"></datalist>
 
-  <div class="rotulo rotulo-fila">
-    <span id="rotMonto">Monto pesos</span>
-    <span class="moneda">
-      <button type="button" id="mArs" aria-pressed="true">$</button>
-      <button type="button" id="mUsd" aria-pressed="false">USD</button>
-    </span>
-  </div>
-  <div class="monto">
-    <span id="simbolo">$</span>
-    <input id="monto" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
-  </div>
-
-  <div id="bloqueUSD" hidden>
-    <label for="cambio">Cotización</label>
-    <input id="cambio" type="text" inputmode="decimal" autocomplete="off">
-    <div class="equivale" id="equivale"></div>
-  </div>
-
-  <div class="rotulo">Medio de pago</div>
-  <div class="fichas" id="medios"></div>
-
-  <div class="fila2">
-    <div>
-      <label for="fecha">Fecha</label>
-      <input id="fecha" type="date">
+    <div class="rotulo rotulo-fila">
+      <span id="rotMonto">Monto pesos</span>
+      <span class="moneda">
+        <button type="button" id="mArs" aria-pressed="true">$</button>
+        <button type="button" id="mUsd" aria-pressed="false">USD</button>
+      </span>
     </div>
-    <div>
-      <label for="notas">Notas</label>
-      <input id="notas" type="text" placeholder="Cuota 1 de 6" autocomplete="off">
+    <div class="monto">
+      <span id="simbolo">$</span>
+      <input id="monto" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
     </div>
+
+    <div id="bloqueUSD" hidden>
+      <label for="cambio">Cotización</label>
+      <input id="cambio" type="text" inputmode="decimal" autocomplete="off">
+      <div class="equivale" id="equivale"></div>
+    </div>
+
+    <div class="rotulo">Medio de pago</div>
+    <div class="fichas" id="medios"></div>
+
+    <div class="fila2">
+      <div>
+        <label for="fecha">Fecha</label>
+        <input id="fecha" type="date">
+      </div>
+      <div>
+        <label for="notas">Notas</label>
+        <input id="notas" type="text" placeholder="Cuota 1 de 6" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="titulo-lista">
+      <h2 id="tituloLista">Gastos del mes</h2>
+      <button class="link" id="btnAuditar">Revisar</button>
+    </div>
+    <div id="lista"></div>
   </div>
 
-  <div class="titulo-lista">
-    <h2 id="tituloLista">Gastos del mes</h2>
-    <button class="link" id="btnAuditar">Revisar</button>
-  </div>
-  <div id="lista"></div>
+  <div id="panelPresu" hidden></div>
 
   <div class="config">
     <button class="link" id="reconfigurar">Cambiar URL o token</button>
