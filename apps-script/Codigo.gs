@@ -1,5 +1,5 @@
 /**
- * Gastos Variables — backend (Apps Script standalone) · versión 0.6
+ * Gastos Variables — backend (Apps Script standalone) · versión 0.7
  * © 2026 Patricio Taylor. Todos los derechos reservados.
  *
  * MODELO DE LA HOJA (verificado en la planilla, no suponer):
@@ -26,7 +26,7 @@ const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'O
 // Versión del proyecto entero: tiene que coincidir con la del index.html.
 // Si no coincide, el /exec quedó sirviendo código viejo y la app te avisa.
 // Subirla en cada cambio.
-const VERSION = '0.6';
+const VERSION = '0.7';
 
 const CARGA_FILA_INI = 16;
 const CARGA_FILA_FIN = 139;   // BG16:BO139
@@ -53,6 +53,29 @@ const MEDIOS_FALLBACK = [
   'Transf. / Deb.', 'Visa Galicia', 'Mastercard Galicia',
   'Visa BNA', 'Mastercard BNA', 'Visa Brubank', 'Mastercard ARQ'
 ];
+
+// Bloque gastos fijos. A diferencia de los variables, el resumen suma por
+// NOMBRE (FILTER por texto), no por posición: no hay UNIQUE, ni AF, ni categoría
+// posicional, ni muro de 32. Cargar un fijo es escribir en la primera fila libre.
+const FIJOS_RESUMEN_INI = 16;   // M16:S32 — lista de servicios + presup/real
+const FIJOS_RESUMEN_FIN = 32;
+const FIJOS_COL_M = 13;         // M: nombre del servicio (fuente del desplegable)
+const FIJOS_COL_O = 15;         // O: presupuesto
+const FIJOS_COL_Q = 17;         // Q: actual (fórmula)
+const FIJOS_COL_R = 18;         // R: tipo (Deseos/Necesidades)
+const FIJOS_COL_S = 19;         // S: fecha de vencimiento
+
+const FIJOS_CARGA_INI = 16;     // AW16:BE47 — bloque de carga
+const FIJOS_CARGA_FIN = 47;
+const FIJOS_COL_AW = 49;        // check
+const FIJOS_COL_AX = 50;        // descripción (= nombre del servicio)
+const FIJOS_COL_AY = 51;        // símbolo USD
+const FIJOS_COL_AZ = 52;        // monto USD
+const FIJOS_COL_BA = 53;        // símbolo pesos
+const FIJOS_COL_BB = 54;        // monto pesos
+const FIJOS_COL_BC = 55;        // cambio
+const FIJOS_COL_BD = 56;        // medio de pago
+const FIJOS_COL_BE = 57;        // fecha
 
 // ═══════════════════════════════════════════════════════════
 //  doGet — leer / auditar
@@ -96,7 +119,8 @@ function doGet(e) {
       medios: leerMedios(hoja),
       indice: leerIndice(hoja),
       gastos: leerGastos(ss, hoja),
-      presupuesto: leerPresupuesto(hoja)
+      presupuesto: leerPresupuesto(hoja),
+      fijos: leerFijos(hoja)
     });
 
   } catch (err) {
@@ -128,6 +152,10 @@ function doPost(e) {
       if (accion === 'editar') return json(editarGasto(body));
       if (accion === 'check')  return json(marcarCheck(body));
       if (accion === 'borrar') return json(borrarGasto(body));
+      if (accion === 'altaFijo') return json(altaFijo(body));
+      if (accion === 'vencimiento') return json(setVencimiento(body));
+      if (accion === 'copiarVenc') return json(copiarVencimientos(body));
+      if (accion === 'actualizarPresu') return json(actualizarPresupuesto(body));
       throw new Error('Acción desconocida: "' + accion + '".');
     } finally {
       lock.releaseLock();
@@ -179,6 +207,230 @@ function altaGasto(body) {
     fila: fila, desc: desc,
     deshacer: function () { limpiarFila(hoja, fila); }
   });
+}
+
+// Alta de un gasto fijo. En un mes nuevo, el bloque ya viene con los 17 servicios
+// pre-escritos en AX (Facultad, Celular...). Cargar un fijo NO crea fila nueva:
+// busca la fila del servicio por nombre y le completa monto/cambio/medio/fecha.
+function altaFijo(body) {
+  const d = validarFijo(body);
+  const ss = abrirLibro();
+  const hoja = hojaDelMes(ss, d.fecha);
+  validarMedio(hoja, d.medio);
+
+  const fila = filaDelServicioFijo(hoja, d.servicio);
+  if (!fila) {
+    throw new Error('El servicio "' + d.servicio + '" no está en el bloque de fijos de ' +
+      hoja.getName() + '. Los fijos vienen precargados: si falta uno, agregalo a mano primero.');
+  }
+
+  escribirFijo(hoja, fila, d, ss.getSpreadsheetTimeZone());
+  SpreadsheetApp.flush();
+
+  return { ok: true, mes: hoja.getName(), fila: fila, servicio: d.servicio };
+}
+
+// Busca la fila del bloque de carga (AX) donde ya está escrito ese servicio.
+function filaDelServicioFijo(hoja, servicio) {
+  const n = FIJOS_CARGA_FIN - FIJOS_CARGA_INI + 1;
+  const vals = hoja.getRange(FIJOS_CARGA_INI, FIJOS_COL_AX, n, 1).getValues();
+  const buscado = String(servicio).trim().toLowerCase();
+  for (let i = 0; i < n; i++) {
+    if (String(vals[i][0] || '').trim().toLowerCase() === buscado) return FIJOS_CARGA_INI + i;
+  }
+  return null;
+}
+
+function validarFijo(body) {
+  const d = {
+    servicio: String(body.servicio || '').trim(),
+    fecha:    String(body.fecha || '').trim(),
+    medio:    String(body.medio || '').trim(),
+    montoUSD: aNumero(body.montoUSD, 'monto USD'),
+    cambio:   aNumero(body.cambio, 'cambio'),
+    monto:    aNumero(body.monto, 'monto')
+  };
+
+  if (!d.servicio) throw new Error('Falta el servicio.');
+  if (!d.medio)    throw new Error('Falta el medio de pago.');
+
+  d.enUSD = (d.montoUSD !== null || d.cambio !== null);
+  if (d.enUSD) {
+    if (d.montoUSD === null) throw new Error('Falta el monto en dólares.');
+    if (d.cambio === null)   throw new Error('Falta la cotización.');
+    if (d.montoUSD <= 0)     throw new Error('El monto en dólares tiene que ser mayor a cero.');
+    if (d.cambio <= 0)       throw new Error('La cotización tiene que ser mayor a cero.');
+    d.monto = null;
+  } else {
+    if (d.monto === null) throw new Error('Falta el monto.');
+    if (d.monto <= 0)     throw new Error('El monto tiene que ser mayor a cero.');
+  }
+  return d;
+}
+
+function escribirFijo(hoja, fila, d, tz) {
+  hoja.getRange(fila, FIJOS_COL_AW).setValue(true);        // check
+  hoja.getRange(fila, FIJOS_COL_AX).setValue(d.servicio);  // descripción
+
+  const fechaObj = Utilities.parseDate(d.fecha, tz, 'yyyy-MM-dd');
+
+  // BB viene precargada con =AZ*BC (como la BK de variables). En dólares la
+  // reescribimos igual (idempotente); en pesos la pisamos con el número. Si algún
+  // día se hace borrado de fijos, restituir =AZ*BC como en limpiarFila.
+  const montoPesos = d.enUSD ? ('=AZ' + fila + '*BC' + fila) : d.monto;
+
+  // AZ (USD) · BA (símbolo, lo dejamos) · BB (pesos) · BC (cambio) · BD (medio) · BE (fecha)
+  hoja.getRange(fila, FIJOS_COL_AZ).setValue(d.montoUSD === null ? '' : d.montoUSD);
+  hoja.getRange(fila, FIJOS_COL_BB).setValue(montoPesos);
+  hoja.getRange(fila, FIJOS_COL_BC).setValue(d.cambio === null ? '' : d.cambio);
+  hoja.getRange(fila, FIJOS_COL_BD).setValue(d.medio);
+  hoja.getRange(fila, FIJOS_COL_BE).setValue(fechaObj);
+}
+
+// Setea la fecha de vencimiento de un servicio fijo. Escribe en S del bloque
+// resumen, buscando la fila por NOMBRE. No toca la carga. Independiente de pagos.
+function setVencimiento(body) {
+  const ss = abrirLibro();
+  const hoja = hojaPorNombre(ss, body.mes);
+  const servicio = String(body.servicio || '').trim();
+  const vence = String(body.vence || '').trim();
+
+  if (!servicio) throw new Error('Falta el servicio.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(vence)) throw new Error('Fecha de vencimiento inválida (AAAA-MM-DD).');
+
+  // Buscar la fila del servicio en el resumen (M16:M32), por nombre.
+  const n = FIJOS_RESUMEN_FIN - FIJOS_RESUMEN_INI + 1;
+  const nombres = hoja.getRange(FIJOS_RESUMEN_INI, FIJOS_COL_M, n, 1).getValues();
+  let fila = null;
+  for (let i = 0; i < n; i++) {
+    if (String(nombres[i][0] || '').trim().toLowerCase() === servicio.toLowerCase()) {
+      fila = FIJOS_RESUMEN_INI + i;
+      break;
+    }
+  }
+  if (!fila) throw new Error('No encontré el servicio "' + servicio + '" en la lista de fijos.');
+
+  const fechaObj = Utilities.parseDate(vence, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  hoja.getRange(fila, FIJOS_COL_S).setValue(fechaObj);   // S
+  SpreadsheetApp.flush();
+
+  return { ok: true, mes: hoja.getName(), servicio: servicio, fila: fila, vence: vence };
+}
+
+// Copia los vencimientos del mes anterior al actual, sumándoles un mes.
+// Solo rellena los que están VACÍOS en el mes actual: no pisa lo que ya cargaste.
+function copiarVencimientos(body) {
+  const ss = abrirLibro();
+  const hoja = hojaPorNombre(ss, body.mes);
+
+  // Mes anterior dentro del libro. Si el actual es ENE, no hay anterior.
+  const m = /^([A-Z]{3}) (\d{2})$/.exec(hoja.getName());
+  const idx = MESES.indexOf(m[1]);
+  if (idx === 0) throw new Error('ENE no tiene mes anterior en el libro.');
+  const anterior = ss.getSheetByName(MESES[idx - 1] + ' ' + m[2]);
+  if (!anterior) throw new Error('No existe la hoja anterior a ' + hoja.getName() + '.');
+
+  const n = FIJOS_RESUMEN_FIN - FIJOS_RESUMEN_INI + 1;
+  const nombresAnt = anterior.getRange(FIJOS_RESUMEN_INI, FIJOS_COL_M, n, 1).getValues();
+  const vencAnt    = anterior.getRange(FIJOS_RESUMEN_INI, FIJOS_COL_S, n, 1).getValues();
+  const nombresAct = hoja.getRange(FIJOS_RESUMEN_INI, FIJOS_COL_M, n, 1).getValues();
+  const vencAct    = hoja.getRange(FIJOS_RESUMEN_INI, FIJOS_COL_S, n, 1).getValues();
+
+  // Mapa servicio → fecha de vencimiento del mes anterior.
+  const mapaAnt = {};
+  for (let i = 0; i < n; i++) {
+    const nom = String(nombresAnt[i][0] || '').trim();
+    if (nom && vencAnt[i][0] instanceof Date) mapaAnt[nom.toLowerCase()] = vencAnt[i][0];
+  }
+
+  let copiados = 0;
+  for (let i = 0; i < n; i++) {
+    const nom = String(nombresAct[i][0] || '').trim();
+    if (!nom) continue;
+    if (vencAct[i][0]) continue;                       // ya tiene: no pisar
+
+    const base = mapaAnt[nom.toLowerCase()];
+    if (!base) continue;                               // el anterior no tenía
+
+    const nueva = sumarUnMes(base);
+    hoja.getRange(FIJOS_RESUMEN_INI + i, FIJOS_COL_S).setValue(nueva);
+    copiados++;
+  }
+  SpreadsheetApp.flush();
+
+  return { ok: true, mes: hoja.getName(), copiados: copiados };
+}
+
+// Suma un mes a una fecha, manteniendo el día. Si el mes destino no tiene ese
+// día (31 → febrero), cae al último día. Trabaja con año/mes/día como números
+// puros para que la zona horaria del script no corra la fecha (bug de -1 día).
+function sumarUnMes(fecha) {
+  var anio = fecha.getFullYear();
+  var mes  = fecha.getMonth();   // 0..11
+  var dia  = fecha.getDate();
+
+  mes += 1;
+  if (mes > 11) { mes = 0; anio += 1; }
+
+  // Último día del mes destino: día 0 del mes siguiente.
+  var ultimoDia = new Date(anio, mes + 1, 0).getDate();
+  var diaFinal = Math.min(dia, ultimoDia);
+
+  // Mediodía en vez de medianoche: aunque el script esté en otra zona, las 12:00
+  // nunca cruzan a otro día al convertir. Evita el corrimiento de -1.
+  return new Date(anio, mes, diaFinal, 12, 0, 0);
+}
+
+// Actualiza los presupuestos que se pasaron (real > presupuesto), igualándolos
+// al real. Variables (X) y fijos (O). Con soloVer=true, NO escribe: solo
+// devuelve la lista de qué cambiaría, para el panel de confirmación.
+function actualizarPresupuesto(body) {
+  const ss = abrirLibro();
+  const hoja = hojaPorNombre(ss, body.mes);
+  const soloVer = (body.soloVer === true);
+
+  const cambios = [];
+
+  // ── Variables: bloque U15:Z33, categoría en V, presup en X, real en Z ──
+  const nVar = 33 - 16 + 1;   // filas 16..33 (la 33 es TOTAL, se saltea)
+  const varVals = hoja.getRange(16, 22, nVar, 5).getValues();  // V..Z (22..26)
+  for (let i = 0; i < nVar - 1; i++) {                          // -1: no tocar fila 33
+    const cat   = String(varVals[i][0] || '').trim();          // V
+    const presu = typeof varVals[i][2] === 'number' ? varVals[i][2] : 0;  // X
+    const real  = typeof varVals[i][4] === 'number' ? varVals[i][4] : 0;  // Z
+    if (!cat) continue;
+    if (real > presu) {
+      cambios.push({ tipo: 'variable', nombre: cat, fila: 16 + i,
+                     col: 24, de: presu, a: real });   // X = 24
+    }
+  }
+
+  // ── Fijos: bloque resumen, servicio en M, presup en O, real en Q ──
+  const nFij = FIJOS_RESUMEN_FIN - FIJOS_RESUMEN_INI + 1;
+  const fijVals = hoja.getRange(FIJOS_RESUMEN_INI, FIJOS_COL_M, nFij, 7).getValues();  // M..S
+  for (let i = 0; i < nFij; i++) {
+    const serv  = String(fijVals[i][0] || '').trim();          // M
+    const presu = typeof fijVals[i][2] === 'number' ? fijVals[i][2] : 0;  // O
+    const real  = typeof fijVals[i][4] === 'number' ? fijVals[i][4] : 0;  // Q
+    if (!serv || serv === '-') continue;
+    if (real > presu) {
+      cambios.push({ tipo: 'fijo', nombre: serv, fila: FIJOS_RESUMEN_INI + i,
+                     col: FIJOS_COL_O, de: presu, a: real });
+    }
+  }
+
+  // Solo previsualizar: devolver la lista sin escribir.
+  if (soloVer) {
+    return { ok: true, mes: hoja.getName(), soloVer: true, cambios: cambios };
+  }
+
+  // Aplicar: escribir el real en cada celda de presupuesto.
+  cambios.forEach(function (c) {
+    hoja.getRange(c.fila, c.col).setValue(c.a);
+  });
+  SpreadsheetApp.flush();
+
+  return { ok: true, mes: hoja.getName(), soloVer: false, aplicados: cambios.length, cambios: cambios };
 }
 
 // ── Edición ──
@@ -730,6 +982,50 @@ function leerPresupuesto(hoja) {
   };
 }
 
+// Lee el bloque de gastos fijos. Solo lectura.
+// Cruza el resumen (M:S: servicio, presup, real, tipo, venc) con la carga
+// (AX/BE: fecha de pago) por nombre de servicio.
+function leerFijos(hoja) {
+  var tz = hoja.getParent().getSpreadsheetTimeZone();
+  var nRes = FIJOS_RESUMEN_FIN - FIJOS_RESUMEN_INI + 1;
+  var vals = hoja.getRange(FIJOS_RESUMEN_INI, FIJOS_COL_M, nRes, 7).getValues();
+
+  // Mapa servicio → fecha de pago, leído del bloque de carga (AX + BE).
+  var nCar = FIJOS_CARGA_FIN - FIJOS_CARGA_INI + 1;
+  var nombresCar = hoja.getRange(FIJOS_CARGA_INI, FIJOS_COL_AX, nCar, 1).getValues();
+  var fechasCar  = hoja.getRange(FIJOS_CARGA_INI, FIJOS_COL_BE, nCar, 1).getValues();
+  var pagoPorServicio = {};
+  for (var j = 0; j < nCar; j++) {
+    var nom = String(nombresCar[j][0] || '').trim();
+    if (nom && fechasCar[j][0] instanceof Date) {
+      pagoPorServicio[nom.toLowerCase()] =
+        Utilities.formatDate(fechasCar[j][0], tz, 'yyyy-MM-dd');
+    }
+  }
+
+  var items = [];
+  vals.forEach(function (f) {
+    var nombre = String(f[0] || '').trim();          // M
+    if (!nombre || nombre === '-') return;
+    items.push({
+      servicio:    nombre,
+      presupuesto: typeof f[2] === 'number' ? f[2] : 0,   // O
+      real:        typeof f[4] === 'number' ? f[4] : 0,   // Q
+      tipo:        String(f[5] || '').trim(),             // R
+      vence:       (f[6] instanceof Date)                 // S
+                     ? Utilities.formatDate(f[6], tz, 'yyyy-MM-dd') : '',
+      pagado:      pagoPorServicio[nombre.toLowerCase()] || ''   // BE, cruzado por nombre
+    });
+  });
+
+  return {
+    items: items,
+    servicios: items.map(function (x) { return x.servicio; }),
+    totalPresupuesto: items.reduce(function (s, x) { return s + x.presupuesto; }, 0),
+    totalReal:        items.reduce(function (s, x) { return s + x.real; }, 0)
+  };
+}
+
 // ═══════════════════════════════════════════════════════════
 //  Pruebas desde el editor
 // ═══════════════════════════════════════════════════════════
@@ -761,5 +1057,36 @@ function probarEditar() {
     fecha: '2026-07-17', desc: 'Cena', monto: 4321,
     medio: 'Transf. / Deb.', notas: 'editado'
   };
+  Logger.log(doPost({ postData: { contents: JSON.stringify(payload) } }).getContent());
+}
+
+/** OJO: escribe un fijo. Borrar la fila después. */
+function probarFijo() {
+  const payload = {
+    token: prop('TOKEN'), accion: 'altaFijo',
+    fecha: '2026-08-18', servicio: 'Netflix', monto: 25830,
+    medio: 'Transf. / Deb.'
+  };
+  Logger.log(doPost({ postData: { contents: JSON.stringify(payload) } }).getContent());
+}
+
+/** OJO: escribe. Setea el vencimiento de un servicio. */
+function probarVencimiento() {
+  const payload = {
+    token: prop('TOKEN'), accion: 'vencimiento',
+    mes: 'JUL 26', servicio: 'Internet', vence: '2026-07-25'
+  };
+  Logger.log(doPost({ postData: { contents: JSON.stringify(payload) } }).getContent());
+}
+
+/** OJO: escribe vencimientos en el mes indicado. */
+function probarCopiarVenc() {
+  const payload = { token: prop('TOKEN'), accion: 'copiarVenc', mes: 'AGO 26' };
+  Logger.log(doPost({ postData: { contents: JSON.stringify(payload) } }).getContent());
+}
+
+/** Muestra qué presupuestos se pasaron, sin escribir. */
+function probarPresuVer() {
+  const payload = { token: prop('TOKEN'), accion: 'actualizarPresu', mes: 'JUL 26', soloVer: true };
   Logger.log(doPost({ postData: { contents: JSON.stringify(payload) } }).getContent());
 }

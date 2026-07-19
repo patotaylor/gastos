@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7] — 2026-07-19
+- Pestaña Fijos: carga de gastos fijos con desplegable de servicios, soporte USD y medios de pago.
+- Lista de fijos con lo pagado, la fecha de pago y el vencimiento por servicio.
+- Editar un fijo ya cargado (monto, fecha de pago y vencimiento) desde un panel.
+- Copiar los vencimientos del mes anterior sumándoles un mes.
+- Selector de mes desde el encabezado: cambia gastos, fijos y presupuesto de una.
+- Presupuesto de fijos en la pestaña Presupuesto, con toggle Variables/Fijos.
+- Botón para actualizar los presupuestos que se pasaron, igualándolos al real (con confirmación que lista los cambios).
+
 ## [0.6] — 2026-07-18
 - Borrado real de gastos: limpia la fila, restituye la precarga =BJ*BL y realinea las categorías de AI solo. Se suma al "Quitar del total".
 - Confirmación de borrado con panel propio (en vez del diálogo del navegador).
