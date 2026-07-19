@@ -137,38 +137,76 @@ export function pintarAuditoria(r) {
   $('fondoAud').hidden = false;
 }
 
-// Dibuja el bloque presupuesto vs real en su panel. Solo lectura.
-// Preparada para más de una sección (hoy: Variables; después: Fijos).
+// Dibuja presupuesto vs real, en dos secciones: variables y fijos. Solo lectura.
 export function pintarPresupuesto(datos) {
-    var p = datos.presupuesto;
-  
-    var filas = p.items.map(function (x) {
-      var pct = x.presupuesto > 0 ? (x.real / x.presupuesto) : 0;
-      var ancho = Math.min(100, Math.round(pct * 100));
-      var estado = pct > 1 ? 'pasado' : (pct >= 0.85 ? 'medio' : '');
-      return '<div class="presu-fila">' +
-               '<div class="top">' +
-                 '<span class="cat">' + esc(x.categoria) + '</span>' +
-                 '<span class="cifras"><b>' + plata.format(x.real) + '</b> / ' +
-                   plata.format(x.presupuesto) + '</span>' +
-               '</div>' +
-               '<div class="presu-barra ' + estado + '"><i style="width:' + ancho + '%"></i></div>' +
-             '</div>';
-    }).join('');
-  
-    var totPct = p.totalPresupuesto > 0 ? (p.totalReal / p.totalPresupuesto) : 0;
-    var totEstado = totPct > 1 ? 'pasado' : (totPct >= 0.85 ? 'medio' : '');
-    var anchoTot = Math.min(100, Math.round(totPct * 100));
-  
-    $('panelPresu').innerHTML =
-      '<div class="presu-seccion">Gastos variables</div>' +
-      filas +
-      '<div class="presu-total">' +
-        '<div class="top">' +
-          '<span class="cat"><b>TOTAL</b></span>' +
-          '<span class="cifras"><b>' + plata.format(p.totalReal) + '</b> / ' +
-            plata.format(p.totalPresupuesto) + '</span>' +
-        '</div>' +
-        '<div class="presu-barra ' + totEstado + '"><i style="width:' + anchoTot + '%"></i></div>' +
-      '</div>';
+  // Helper: una fila (categoría/servicio + barra). Evita repetir la lógica.
+  function fila(nombre, real, presu) {
+    var pct = presu > 0 ? (real / presu) : (real > 0 ? 2 : 0);
+    var ancho = Math.min(100, Math.round(pct * 100));
+    var estado = pct > 1 ? 'pasado' : (pct >= 0.85 ? 'medio' : '');
+    return '<div class="presu-fila">' +
+             '<div class="top">' +
+               '<span class="cat">' + esc(nombre) + '</span>' +
+               '<span class="cifras"><b>' + plata.format(real) + '</b> / ' +
+                 plata.format(presu) + '</span>' +
+             '</div>' +
+             '<div class="presu-barra ' + estado + '"><i style="width:' + ancho + '%"></i></div>' +
+           '</div>';
   }
+
+  function total(real, presu) {
+    var pct = presu > 0 ? (real / presu) : 0;
+    var ancho = Math.min(100, Math.round(pct * 100));
+    var estado = pct > 1 ? 'pasado' : (pct >= 0.85 ? 'medio' : '');
+    return '<div class="presu-total">' +
+             '<div class="top">' +
+               '<span class="cat"><b>TOTAL</b></span>' +
+               '<span class="cifras"><b>' + plata.format(real) + '</b> / ' +
+                 plata.format(presu) + '</span>' +
+             '</div>' +
+             '<div class="presu-barra ' + estado + '"><i style="width:' + ancho + '%"></i></div>' +
+           '</div>';
+  }
+
+  var p = datos.presupuesto;   // variables
+  var f = datos.fijos;         // fijos
+
+  var htmlVar =
+    p.items.map(function (x) { return fila(x.categoria, x.real, x.presupuesto); }).join('') +
+    total(p.totalReal, p.totalPresupuesto);
+
+  var htmlFijos =
+    f.items.map(function (x) { return fila(x.servicio, x.real, x.presupuesto); }).join('') +
+    total(f.totalReal, f.totalPresupuesto);
+
+  // Cuál se muestra depende del sub-toggle. Por defecto, Variables.
+  var verFijos = $('subFijos').getAttribute('aria-pressed') === 'true';
+  $('presuContenido').innerHTML = verFijos ? htmlFijos : htmlVar;
+}
+
+// Lista de fijos: una fila por servicio con lo pagado y el vencimiento.
+// Los que no tienen monto se ven como "sin pagar" (checklist del mes).
+export function pintarFijos(datos) {
+  var f = datos.fijos;
+
+  // Desplegable de carga (los 17 servicios)
+  $('fijoServicio').innerHTML = f.servicios.map(function (s) {
+    return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+  }).join('');
+
+  // Lista: pagado + vencimiento por servicio
+  $('listaFijos').innerHTML = f.items.map(function (x) {
+    var pagado = x.real > 0;
+    var venc  = x.vence  ? (x.vence.slice(8)  + '/' + x.vence.slice(5, 7))  : '—';
+    var fpago = x.pagado ? (x.pagado.slice(8) + '/' + x.pagado.slice(5, 7)) : '—';
+    var monto = pagado ? plata.format(x.real) : 'sin pagar';
+
+    return '<button class="fijo-fila' + (pagado ? '' : ' off') + '" ' +
+             'data-servicio="' + esc(x.servicio) + '" data-vence="' + esc(x.vence || '') + '">' +
+             '<span class="fj-serv">' + esc(x.servicio) + '</span>' +
+             '<span class="fj-monto">' + monto + '</span>' +
+             '<span class="fj-pago">' + fpago + '</span>' +
+             '<span class="fj-venc">' + venc + '</span>' +
+           '</button>';
+  }).join('');
+}

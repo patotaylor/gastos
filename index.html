@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  Gastos Variables — PWA de carga · versión 0.6
+  Gastos Variables — PWA de carga · versión 0.7
   © 2026 Patricio Taylor. Todos los derechos reservados.
   Uso personal. Escribe en la planilla "Presupuesto" vía Apps Script.
 -->
@@ -38,7 +38,10 @@
 <div class="wrap" id="vistaApp" hidden>
   <header>
     <div class="titulo-mes">
-      <span class="mes cargando" id="mes">···</span>
+      <button class="mes-btn" id="mesBtn">
+        <span class="mes cargando" id="mes">···</span>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
       <button class="recargar" id="recargar" aria-label="Actualizar desde la planilla" title="Actualizar">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -54,6 +57,7 @@
 
   <nav class="tabs">
     <button class="tab" id="tabCargar" aria-pressed="true">Cargar</button>
+    <button class="tab" id="tabFijos" aria-pressed="false">Fijos</button>
     <button class="tab" id="tabPresu" aria-pressed="false">Presupuesto</button>
   </nav>
 
@@ -102,14 +106,70 @@
     <div id="lista"></div>
   </div>
 
-  <div id="panelPresu" hidden></div>
+  <div id="panelFijos" hidden>
+    <div id="avisosFijos"></div>
+  
+    <label for="fijoServicio">Servicio</label>
+    <select id="fijoServicio"></select>
+  
+    <div class="rotulo rotulo-fila">
+      <span id="fijoRotMonto">Monto pesos</span>
+      <span class="moneda">
+        <button type="button" id="fijoArs" aria-pressed="true">$</button>
+        <button type="button" id="fijoUsd" aria-pressed="false">USD</button>
+      </span>
+    </div>
+    <div class="monto">
+      <span id="fijoSimbolo">$</span>
+      <input id="fijoMonto" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+    </div>
+  
+    <div id="fijoBloqueUSD" hidden>
+      <label for="fijoCambio">Cotización</label>
+      <input id="fijoCambio" type="text" inputmode="decimal" autocomplete="off">
+      <div class="equivale" id="fijoEquivale"></div>
+    </div>
+  
+    <div class="rotulo">Medio de pago</div>
+    <div class="fichas" id="fijoMedios"></div>
+  
+    <label for="fijoFecha">Fecha de pago</label>
+    <input id="fijoFecha" type="date">
+  
+    <div class="titulo-lista">
+      <h2>Vencimientos</h2>
+      <button class="link" id="btnCopiarVenc">Copiar del mes anterior</button>
+    </div>
+    <div class="fijo-fila fijo-head">
+      <span class="fj-serv">Servicio</span>
+      <span class="fj-monto">Pagado</span>
+      <span class="fj-pago">F. pago</span>
+      <span class="fj-venc">Vence</span>
+    </div>
+    <div id="listaFijos"></div>
+  </div>
+
+  <div id="panelPresu" hidden>
+    <div class="sub-toggle">
+      <button class="sub-tab" id="subVar" aria-pressed="true">Variables</button>
+      <button class="sub-tab" id="subFijos" aria-pressed="false">Fijos</button>
+    </div>
+    <div class="titulo-lista">
+      <button class="link" id="btnActualizarPresu">Actualizar presupuesto</button>
+    </div>
+    <div id="avisosPresu"></div>
+    <div id="presuContenido"></div>
+  </div>
 
   <div class="config">
     <button class="link" id="reconfigurar">Cambiar URL o token</button>
     <button class="link" id="firma">© 2026 Patricio · v0.4</button>
   </div>
 
-  <div class="pie"><div><button class="guardar" id="guardar">Guardar gasto</button></div></div>
+  <div class="pie" id="pie"><div>
+    <button class="guardar" id="guardar">Guardar gasto</button>
+    <button class="guardar" id="guardarFijo" hidden>Guardar gasto</button>
+  </div></div>
 </div>
 
 <!-- ══ Edición ══ -->
@@ -179,6 +239,70 @@
     <div class="botones">
       <button class="btn peligro" id="borrarConfirmar">Sí, borrar de la planilla</button>
       <button class="btn gris" id="borrarCancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="fondo alto" id="fondoFijo" hidden>
+  <div class="panel" role="dialog" aria-modal="true">
+    <h2 id="fijoEdTitulo">Servicio</h2>
+    <div id="fijoEdError"></div>
+
+    <div class="rotulo rotulo-fila">
+      <span id="fijoEdRotMonto">Monto pesos</span>
+      <span class="moneda">
+        <button type="button" id="fijoEdArs" aria-pressed="true">$</button>
+        <button type="button" id="fijoEdUsd" aria-pressed="false">USD</button>
+      </span>
+    </div>
+    <div class="monto">
+      <span id="fijoEdSimbolo">$</span>
+      <input id="fijoEdMonto" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+    </div>
+
+    <div id="fijoEdBloqueUSD" hidden>
+      <label for="fijoEdCambio">Cotización</label>
+      <input id="fijoEdCambio" type="text" inputmode="decimal" autocomplete="off">
+      <div class="equivale" id="fijoEdEquivale"></div>
+    </div>
+
+    <div class="rotulo">Medio de pago</div>
+    <div class="fichas" id="fijoEdMedios"></div>
+
+    <div class="fila2">
+      <div>
+        <label for="fijoEdFecha">Fecha de pago</label>
+        <input id="fijoEdFecha" type="date">
+      </div>
+      <div>
+        <label for="fijoEdVence">Vencimiento</label>
+        <input id="fijoEdVence" type="date">
+      </div>
+    </div>
+
+    <div class="botones">
+      <button class="btn primario" id="fijoEdGuardar">Guardar cambios</button>
+      <button class="btn gris" id="fijoEdCancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="fondo alto" id="fondoMes" hidden>
+  <div class="panel" role="dialog" aria-modal="true">
+    <h2>Cambiar de mes</h2>
+    <div class="meses-grid" id="mesesGrid"></div>
+    <div class="botones"><button class="btn gris" id="mesCancelar">Cancelar</button></div>
+  </div>
+</div>
+
+<div class="fondo alto" id="fondoPresu" hidden>
+  <div class="panel" role="dialog" aria-modal="true">
+    <h2>Actualizar presupuesto</h2>
+    <p>Estos gastos superaron su presupuesto. Se igualará el presupuesto al real:</p>
+    <div id="presuCambios"></div>
+    <div class="botones">
+      <button class="btn primario" id="presuConfirmar">Sí, actualizar</button>
+      <button class="btn gris" id="presuCancelar">Cancelar</button>
     </div>
   </div>
 </div>

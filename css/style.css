@@ -247,3 +247,85 @@
     font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
     letter-spacing: .14em; color: var(--tenue); margin: 20px 0 4px;
   }
+
+  .mes-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: 0; cursor: pointer; padding: 0;
+    color: var(--tenue);
+  }
+  .mes-btn .mes { color: var(--texto); }
+  
+  .meses-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px;
+  }
+  .mes-opcion {
+    background: var(--panel); border: 1px solid var(--linea); border-radius: 8px;
+    color: var(--texto); font-family: var(--mono); font-size: 13px; letter-spacing: .04em;
+    padding: 13px 8px; cursor: pointer; text-align: center;
+  }
+  .mes-opcion[aria-pressed="true"] {
+    background: var(--ambar); color: #1A1204; border-color: var(--ambar); font-weight: 700;
+  }
+
+  /* ── Filas de fijos: 3 columnas (servicio · monto · vencimiento) ── */
+  .fijo-fila {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;   /* servicio · monto · pago · vence */
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: none; border: 0; border-bottom: 1px solid var(--linea);
+    color: var(--texto); cursor: pointer;
+    padding: 12px 2px; text-align: left;
+  }
+  .fijo-fila .fj-pago {
+    font-family: var(--mono); font-size: 12px; color: var(--tenue);
+    text-align: right; min-width: 42px;
+  }
+.fijo-fila .fj-serv { font-size: 14.5px; }
+.fijo-fila .fj-monto {
+  font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums;
+  text-align: right; min-width: 84px;
+}
+.fijo-fila .fj-venc {
+  font-family: var(--mono); font-size: 12px; color: var(--tenue);
+  text-align: right; min-width: 42px;
+}
+.fijo-fila:active { background: var(--panel); }
+.fijo-fila.off { opacity: .55; }
+.fijo-fila.off .fj-monto { color: var(--tenue); }
+
+.fijo-head {
+  cursor: default; border-bottom: 1px solid var(--linea);
+}
+.fijo-head span {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--tenue);
+}
+
+/* ── Sub-toggle dentro de Presupuesto ── */
+.sub-toggle {
+  display: flex; gap: 6px; margin-bottom: 14px;
+  background: var(--panel); border-radius: 10px; padding: 4px;
+}
+.sub-tab {
+  flex: 1; background: none; border: 0; border-radius: 7px;
+  color: var(--tenue); cursor: pointer;
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  padding: 9px 8px;
+}
+.sub-tab[aria-pressed="true"] {
+  background: var(--fondo); color: var(--texto);
+}
+
+.presu-cambio {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--linea);
+  font-size: 14px;
+}
+.presu-cambio .cifras {
+  font-family: var(--mono); font-size: 12px; color: var(--tenue);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.presu-cambio .cifras b { color: var(--texto); }
+.presu-cambio small { color: var(--tenue); }
